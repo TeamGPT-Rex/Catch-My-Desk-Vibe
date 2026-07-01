@@ -536,7 +536,7 @@ async function analyzeDesk(photoUrl) {
 Return ONLY a JSON object — start with { end with } — no other text.
 {"archetype":"cozy","tagline":"Zen Tea Sorcerer","colorId":"green","description":"2 punchy sentences about THIS desk with humour.","deskTraits":["trait1","trait2","trait3"],"deskObjects":["mug","plant","keyboard","monitor","notebook"]}
 archetype: chaotic|focused|cozy|zen|creative|default. colorId: green|coral|sky|sand|violet. tagline: 2-4 words. deskTraits: exactly 3 strings. deskObjects: list of 5-8 physical objects you can actually see on the desk (use simple lowercase English nouns like "mug", "plant", "lamp", "hourglass", "cactus", "notebook", "trophy", "candle").`;
-  const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:350,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},{type:"text",text:prompt}]}]})});
+  const res=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:350,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},{type:"text",text:prompt}]}]})});
   const data=await res.json();
   if(data.error) throw new Error(data.error.message);
   const raw=data.content?.find(b=>b.type==="text")?.text||"";
@@ -554,7 +554,7 @@ async function updatePersonaStep2(persona, hobbies, music) {
 New: hobbies=${hL}, music=${mL}. Evolve incorporating these. Return ONLY JSON:
 {"tagline":"2-4 words","description":"2 punchy sentences blending desk+hobbies+music","deskTraits":["t1","t2","t3"]}
 Start with {`;
-  const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:250,messages:[{role:"user",content:[{type:"text",text:prompt}]}]})});
+  const res=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:250,messages:[{role:"user",content:[{type:"text",text:prompt}]}]})});
   const data=await res.json();
   if(data.error) throw new Error(data.error.message);
   const raw=data.content?.find(b=>b.type==="text")?.text||"";
@@ -570,7 +570,7 @@ async function updatePersonaStep3(persona, step2Update, movies, style) {
 New: films=${mL}, desk style=${sL}. Final evolution. Return ONLY JSON:
 {"tagline":"2-4 words final","description":"2 punchy final sentences","deskTraits":["t1","t2","t3"]}
 Start with {`;
-  const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:250,messages:[{role:"user",content:[{type:"text",text:prompt}]}]})});
+  const res=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:250,messages:[{role:"user",content:[{type:"text",text:prompt}]}]})});
   const data=await res.json();
   if(data.error) throw new Error(data.error.message);
   const raw=data.content?.find(b=>b.type==="text")?.text||"";
