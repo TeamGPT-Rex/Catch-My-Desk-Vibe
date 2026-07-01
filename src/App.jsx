@@ -536,7 +536,7 @@ async function analyzeDesk(photoUrl) {
 Return ONLY a JSON object — start with { end with } — no other text.
 {"archetype":"cozy","tagline":"Zen Tea Sorcerer","colorId":"green","description":"2 punchy sentences about THIS desk with humour.","deskTraits":["trait1","trait2","trait3"],"deskObjects":["mug","plant","keyboard","monitor","notebook"]}
 archetype: chaotic|focused|cozy|zen|creative|default. colorId: green|coral|sky|sand|violet. tagline: 2-4 words. deskTraits: exactly 3 strings. deskObjects: list of 5-8 physical objects you can actually see on the desk (use simple lowercase English nouns like "mug", "plant", "lamp", "hourglass", "cactus", "notebook", "trophy", "candle").`;
-  const res=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:350,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},{type:"text",text:prompt}]}]})});
+  const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:350,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},{type:"text",text:prompt}]}]})});
   const data=await res.json();
   if(data.error) throw new Error(data.error.message);
   const raw=data.content?.find(b=>b.type==="text")?.text||"";
@@ -554,7 +554,7 @@ async function updatePersonaStep2(persona, hobbies, music) {
 New: hobbies=${hL}, music=${mL}. Evolve incorporating these. Return ONLY JSON:
 {"tagline":"2-4 words","description":"2 punchy sentences blending desk+hobbies+music","deskTraits":["t1","t2","t3"]}
 Start with {`;
-  const res=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:250,messages:[{role:"user",content:[{type:"text",text:prompt}]}]})});
+  const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:250,messages:[{role:"user",content:[{type:"text",text:prompt}]}]})});
   const data=await res.json();
   if(data.error) throw new Error(data.error.message);
   const raw=data.content?.find(b=>b.type==="text")?.text||"";
@@ -570,7 +570,7 @@ async function updatePersonaStep3(persona, step2Update, movies, style) {
 New: films=${mL}, desk style=${sL}. Final evolution. Return ONLY JSON:
 {"tagline":"2-4 words final","description":"2 punchy final sentences","deskTraits":["t1","t2","t3"]}
 Start with {`;
-  const res=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:250,messages:[{role:"user",content:[{type:"text",text:prompt}]}]})});
+  const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:250,messages:[{role:"user",content:[{type:"text",text:prompt}]}]})});
   const data=await res.json();
   if(data.error) throw new Error(data.error.message);
   const raw=data.content?.find(b=>b.type==="text")?.text||"";
@@ -1133,18 +1133,18 @@ function Btn({onClick, disabled, children, style={}}) {
 
 function StepBar({step}) {
   return (
-    <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"center",padding:"4px 0"}}>
-      {[1,2,3,4,5].map(n=>(
-        <div key={n} style={{display:"flex",alignItems:"center",gap:6}}>
-          <div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",
-            fontSize:10,fontWeight:900,
+    <div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"center",padding:"4px 0"}}>
+      {[1,2,3,4,5,6].map(n=>(
+        <div key={n} style={{display:"flex",alignItems:"center",gap:4}}>
+          <div style={{width:24,height:24,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",
+            fontSize:9,fontWeight:900,
             background:n<=step?"#22c55e":"rgba(0,0,0,0.1)",
             color:n<=step?"white":"rgba(0,0,0,0.35)",
             boxShadow:n===step?"0 0 0 3px rgba(34,197,94,0.3)":"none",
             transition:"all 0.3s"}}>
             {n<step?"✓":n}
           </div>
-          {n<5 && <div style={{width:18,height:2,borderRadius:99,background:n<step?"#22c55e":"rgba(0,0,0,0.1)",transition:"all 0.3s"}}/>}
+          {n<6 && <div style={{width:14,height:2,borderRadius:99,background:n<step?"#22c55e":"rgba(0,0,0,0.1)",transition:"all 0.3s"}}/>}
         </div>
       ))}
     </div>
@@ -1256,9 +1256,7 @@ function Step1() {
       try {
         const persona = await analyzeDesk(url);
         clearInterval(sint); clearInterval(dint);
-        update({persona, step:2});  // go directly to step 2 reveal after analysis
-        // But first show the result — we need a reveal moment so stay on step 1 with result shown
-        update({persona, analyzing:false});
+        update({persona, analyzing:false});  // stay on step 1, show scan complete
       } catch(err) {
         clearInterval(sint); clearInterval(dint);
         update({
@@ -1277,65 +1275,23 @@ function Step1() {
   const persona = state.persona;
   const color   = persona ? bc(persona.colorId) : null;
 
-  // If we have a persona result, show it
+  // Scan complete → auto-advance to Step 2 (persona reveal)
   if (persona && !analyzing) {
-    return (
-      <div style={{minHeight:"100%",background:"linear-gradient(135deg,#0d1f0e,#0e1a2e,#1a0d28)",
-        position:"relative",overflow:"hidden"}}>
-        {state.photoUrl && <img src={state.photoUrl} alt="" style={{position:"absolute",inset:0,
-          width:"100%",height:"100%",objectFit:"cover",opacity:0.1,filter:"blur(12px)"}}/>}
-        <div style={{position:"relative",zIndex:10,display:"flex",flexDirection:"column",
-          alignItems:"center",padding:"24px 16px",gap:18,maxWidth:420,margin:"0 auto"}}>
-          <StepBar step={1}/>
-          <div style={{fontSize:11,fontWeight:900,color:"#4ade80",textTransform:"uppercase",letterSpacing:3}}>✦ Step 1 Complete ✦</div>
-
-          {persona.apiError && (
-            <div style={{width:"100%",background:"rgba(251,191,36,0.15)",border:"1px solid rgba(251,191,36,0.4)",
-              borderRadius:14,padding:"10px 14px",fontSize:11,color:"#FCD34D",fontWeight:700}}>
-              ⚠️ Auto-analysis unavailable — placeholder persona assigned.
-              {persona.apiErrorMsg && <div style={{fontSize:9,marginTop:3,opacity:0.7,fontFamily:"monospace"}}>{persona.apiErrorMsg}</div>}
-            </div>
-          )}
-
-          <AvatarPersonaRow
-            colorId={persona.colorId} tagline={persona.tagline} step={1} size={85}
-            label="🤖 Your Desk Persona" description={persona.description}
-            traits={persona.deskTraits||[]} dark={color?.dark}
-          />
-
-          {state.photoUrl && (
-            <div style={{width:"100%",borderRadius:16,overflow:"hidden",border:"3px solid rgba(255,255,255,0.15)"}}>
-              <img src={state.photoUrl} alt="desk" style={{width:"100%",aspectRatio:"16/7",objectFit:"cover",display:"block"}}/>
-              <div style={{background:"rgba(0,0,0,0.7)",padding:"8px 14px",fontSize:11,color:"rgba(255,255,255,0.7)",fontWeight:600}}>
-                📍 Your desk — analysed
-              </div>
-            </div>
-          )}
-
-          <Btn onClick={()=>update({step:2})} style={{width:"100%",
-            background:`linear-gradient(135deg,${color?.grad[0]},${color?.grad[1]})`,
-            color:"white",padding:"16px 0",borderRadius:18,fontSize:13,
-            textTransform:"uppercase",letterSpacing:2,boxShadow:`0 4px 20px ${color?.hex}55`}}>
-            Continue to Step 2 →
-          </Btn>
-        </div>
-      </div>
-    );
+    // Auto-navigate to step 2 immediately
+    setTimeout(() => update({step:2}), 120);
+    return null;
   }
 
   // Upload or analyzing state
   return (
     <div style={{minHeight:"100%",display:"flex",flexDirection:"column",alignItems:"center",
-      justifyContent:"center",background: analyzing
-        ? "linear-gradient(135deg,#060e08,#060d18)"
-        : "linear-gradient(135deg,#ecfdf5,#e0f2fe)",
+      justifyContent:"center",background:"linear-gradient(135deg,#ecfdf5,#e0f2fe)",
       padding:24,gap:24,position:"relative",overflow:"hidden"}}>
 
       {/* Scanning animation overlay */}
       {analyzing && state.photoUrl && <>
         <img src={state.photoUrl} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",
-          objectFit:"cover",opacity:0.35,filter:"saturate(0.3) brightness(0.5)"}}/>
-        <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.5)"}}/>
+          objectFit:"cover",opacity:1,filter:"blur(8px) saturate(0.8)"}}/>
         <div style={{position:"absolute",left:0,right:0,top:"40%",height:3,
           background:"linear-gradient(90deg,transparent,#4ade80,#22d3ee,#4ade80,transparent)",
           boxShadow:"0 0 18px #4ade80",animation:"scanLine 2s linear infinite",zIndex:10}}/>
@@ -1373,10 +1329,10 @@ function Step1() {
             <div style={{textAlign:"center",maxWidth:340}}>
               <div style={{fontSize:60,marginBottom:12,animation:"bounce 1.2s infinite",display:"inline-block"}}>🖥️</div>
               <h1 style={{fontSize:26,fontWeight:900,color:"#14532d",margin:"0 0 8px",letterSpacing:-0.5}}>Catch My Desk Vibe!</h1>
-              <p style={{color:"#16a34a",fontWeight:600,fontSize:13,margin:0}}>Upload your desk photo — AI reveals your persona in 4 steps.</p>
+              <p style={{color:"#16a34a",fontWeight:600,fontSize:13,margin:0}}>Upload your workspace, Discover your true personality.</p>
             </div>
             <Glass style={{width:"100%",padding:18}}>
-              {[["📸","Step 1: AI analyses your desk → persona + avatar"],["🎮","Step 2: Hobbies & music → playlist + evolved avatar"],["🎬","Step 3: Films & style → watchlist + full avatar"],["🎁","Step 4: Final card + desk reward"]].map(([ic,tx])=>(
+              {[["📸","Step 1 & 2: AI scans your desk → reveals your persona"],["🎮","Step 3: Hobbies & music → your playlist"],["🎬","Step 4: Films & style → your watchlist"],["🎁","Step 5 & 6: Final card + desk upgrade"]].map(([ic,tx])=>(
                 <div key={ic} style={{display:"flex",gap:12,alignItems:"flex-start",marginBottom:10}}>
                   <span style={{fontSize:18}}>{ic}</span>
                   <span style={{fontSize:12,color:"#44403c",fontWeight:600}}>{tx}</span>
@@ -1400,9 +1356,122 @@ function Step1() {
   );
 }
 
-// ─── STEP 2: HOBBY + MUSIC ────────────────────────────────────────────────────
+// ─── STEP 2: PERSONA REVEAL ──────────────────────────────────────────────────
 
 function Step2() {
+  const {state, update} = useGame();
+  const persona = state.persona;
+  const color   = bc(persona?.colorId);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => { setTimeout(() => setVisible(true), 100); }, []);
+
+  if (!persona) { update({step:1}); return null; }
+
+  return (
+    <div style={{minHeight:"100%", position:"relative", overflow:"hidden",
+      background:"linear-gradient(135deg,#0d1f0e,#0e1a2e,#1a0d28)"}}>
+
+      {/* Blurred desk photo background */}
+      {state.photoUrl && (
+        <img src={state.photoUrl} alt="" style={{position:"absolute",inset:0,
+          width:"100%",height:"100%",objectFit:"cover",opacity:0.15,filter:"blur(14px)"}}/>
+      )}
+      <div style={{position:"absolute",inset:0,
+        background:"linear-gradient(180deg,rgba(0,0,0,0.5) 0%,rgba(0,0,0,0.15) 60%,rgba(0,0,0,0.6) 100%)"}}/>
+
+      <div style={{position:"relative",zIndex:10,display:"flex",flexDirection:"column",
+        alignItems:"center",padding:"32px 20px",gap:24,maxWidth:420,margin:"0 auto"}}>
+
+        <StepBar step={2}/>
+
+        {/* Reveal label */}
+        <div style={{
+          fontSize:11,fontWeight:900,color:"#4ade80",textTransform:"uppercase",letterSpacing:3,
+          opacity:visible?1:0,transition:"opacity 0.6s ease",
+        }}>✦ Your Desk Persona ✦</div>
+
+        {/* Big tagline — the centrepiece */}
+        <div style={{
+          textAlign:"center",
+          opacity:visible?1:0,
+          transform:visible?"translateY(0)":"translateY(16px)",
+          transition:"all 0.7s ease 0.15s",
+        }}>
+          <div style={{
+            fontSize:38,fontWeight:900,color:"white",lineHeight:1.15,
+            letterSpacing:-1,marginBottom:12,
+            textShadow:`0 0 40px ${color.hex}88`,
+          }}>
+            {persona.tagline}
+          </div>
+          {/* Coloured accent line */}
+          <div style={{width:64,height:4,borderRadius:99,
+            background:`linear-gradient(90deg,${color.grad[0]},${color.grad[1]})`,
+            margin:"0 auto 16px",boxShadow:`0 0 12px ${color.hex}66`}}/>
+          {/* One witty line */}
+          <p style={{fontSize:15,color:"rgba(255,255,255,0.82)",fontWeight:600,
+            lineHeight:1.65,margin:0,maxWidth:320}}>
+            {persona.description}
+          </p>
+        </div>
+
+        {/* Trait pills */}
+        {(persona.deskTraits||[]).length>0 && (
+          <div style={{
+            display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",
+            opacity:visible?1:0,transition:"opacity 0.6s ease 0.4s",
+          }}>
+            {persona.deskTraits.map((t,i)=>(
+              <span key={i} style={{
+                fontSize:12,fontWeight:700,padding:"6px 14px",borderRadius:99,
+                background:`${color.hex}22`,color:color.grad[0],
+                border:`1px solid ${color.hex}44`,backdropFilter:"blur(8px)",
+              }}>{t}</span>
+            ))}
+          </div>
+        )}
+
+        {/* Desk photo thumbnail */}
+        {state.photoUrl && (
+          <div style={{
+            width:"100%",borderRadius:16,overflow:"hidden",
+            border:`2px solid ${color.hex}44`,
+            opacity:visible?1:0,transition:"opacity 0.6s ease 0.55s",
+          }}>
+            <img src={state.photoUrl} alt="Your desk"
+              style={{width:"100%",aspectRatio:"16/7",objectFit:"cover",display:"block"}}/>
+          </div>
+        )}
+
+        {/* CTA */}
+        <Btn onClick={()=>update({step:3})} style={{
+          width:"100%",
+          background:`linear-gradient(135deg,${color.grad[0]},${color.grad[1]})`,
+          color:"white",padding:"16px 0",borderRadius:18,fontSize:13,
+          textTransform:"uppercase",letterSpacing:2,
+          boxShadow:`0 4px 24px ${color.hex}55`,
+          opacity:visible?1:0,transition:"opacity 0.6s ease 0.7s",
+        }}>
+          Tell Us More →
+        </Btn>
+
+        {persona.apiError && (
+          <div style={{width:"100%",background:"rgba(251,191,36,0.12)",
+            border:"1px solid rgba(251,191,36,0.35)",borderRadius:12,
+            padding:"10px 14px",fontSize:10,color:"#FCD34D",fontWeight:700}}>
+            ⚠️ Auto-analysis unavailable — placeholder persona used.
+            {persona.apiErrorMsg&&<div style={{fontSize:9,marginTop:3,opacity:0.6,fontFamily:"monospace"}}>{persona.apiErrorMsg}</div>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── STEP 3: HOBBY + MUSIC ────────────────────────────────────────────────────
+
+function Step3() {
   const {state, update} = useGame();
   const persona  = state.persona;
   const color    = bc(persona?.colorId);
@@ -1437,19 +1506,24 @@ function Step2() {
       <div style={{position:"relative",zIndex:10,display:"flex",flexDirection:"column",
         alignItems:"center",padding:"20px 14px",gap:14,maxWidth:440,margin:"0 auto"}}>
 
-        <StepBar step={2}/>
+        <StepBar step={4}/>
 
-        {/* Avatar row — shows description beside avatar only after evolve */}
+        {/* Persona card — evolves after submit */}
         {evolved ? (
           <AvatarPersonaRow
             colorId={persona?.colorId} tagline={currentTagline}
             step={2} hobbies={state.selectedHobbies} musicIds={state.selectedMusic} size={80}
-            label="🤖 Persona Update" description={currentDesc}
+            label="✦ Personality Update" description={currentDesc}
             traits={currentTraits} dark={color.dark}
           />
         ) : (
-          <Avatar colorId={persona?.colorId} tagline={currentTagline}
-            step={1} hobbies={[]} musicIds={[]} size={90}/>
+          <Glass style={{width:"100%",padding:"14px 18px",display:"flex",alignItems:"center",gap:12}}>
+            <div style={{fontSize:28,flexShrink:0}}>✦</div>
+            <div>
+              <div style={{fontSize:12,fontWeight:900,color:color.dark,marginBottom:2}}>{persona?.tagline}</div>
+              <div style={{fontSize:11,color:"#78716c",fontWeight:600}}>Tell us more to refine your profile</div>
+            </div>
+          </Glass>
         )}
 
         {/* Before submit: show forms. After submit: hide forms, show compact summary + results */}
@@ -1477,7 +1551,7 @@ function Step2() {
               background:canContinue?"linear-gradient(135deg,#22c55e,#a855f7)":"#e7e5e4",
               color:canContinue?"white":"#a8a29e",padding:"14px 0",borderRadius:18,
               fontSize:12,textTransform:"uppercase",letterSpacing:2}}>
-              {loading?"Evolving your avatar...":"✨ Update My Avatar & Playlist"}
+              {loading?"Discovering more about you...":"✨ Discover More About You"}
             </Btn>
           </>
         ) : (
@@ -1499,11 +1573,11 @@ function Step2() {
               </div>
             </Glass>
 
-            <Btn onClick={()=>update({step:3})} style={{width:"100%",
+            <Btn onClick={()=>update({step:4})} style={{width:"100%",
               background:`linear-gradient(135deg,${color.grad[0]},${color.grad[1]})`,
               color:"white",padding:"16px 0",borderRadius:18,fontSize:12,
               textTransform:"uppercase",letterSpacing:2,boxShadow:`0 4px 20px ${color.hex}55`}}>
-              Continue to Step 3 →
+              Continue to Step 4 →
             </Btn>
           </>
         )}
@@ -1512,9 +1586,9 @@ function Step2() {
   );
 }
 
-// ─── STEP 3: FILM + STYLE ─────────────────────────────────────────────────────
+// ─── STEP 4: FILM + STYLE ─────────────────────────────────────────────────────
 
-function Step3() {
+function Step4() {
   const {state, update} = useGame();
   const persona  = state.persona;
   const color    = bc(persona?.colorId);
@@ -1553,21 +1627,25 @@ function Step3() {
       <div style={{position:"relative",zIndex:10,display:"flex",flexDirection:"column",
         alignItems:"center",padding:"20px 14px",gap:14,maxWidth:440,margin:"0 auto"}}>
 
-        <StepBar step={3}/>
+        <StepBar step={4}/>
 
-        {/* Avatar row — shows description beside avatar only after evolve */}
+        {/* Persona card — evolves after submit */}
         {evolved ? (
           <AvatarPersonaRow
             colorId={persona?.colorId} tagline={currentTagline}
             step={3} hobbies={state.selectedHobbies} musicIds={state.selectedMusic}
             movieIds={state.selectedMovies} styleId={state.selectedStyle} size={80}
-            label="🤖 Persona Update" description={currentDesc}
+            label="✦ Personality Update" description={currentDesc}
             traits={currentTraits} dark={color.dark}
           />
         ) : (
-          <Avatar colorId={persona?.colorId} tagline={currentTagline}
-            step={2} hobbies={state.selectedHobbies} musicIds={state.selectedMusic}
-            movieIds={[]} styleId={null} size={90}/>
+          <Glass style={{width:"100%",padding:"14px 18px",display:"flex",alignItems:"center",gap:12}}>
+            <div style={{fontSize:28,flexShrink:0}}>✦</div>
+            <div>
+              <div style={{fontSize:12,fontWeight:900,color:color.dark,marginBottom:2}}>{currentTagline}</div>
+              <div style={{fontSize:11,color:"#78716c",fontWeight:600}}>A few more answers to complete your profile</div>
+            </div>
+          </Glass>
         )}
 
         {/* Before submit: show forms. After submit: hide forms, show compact summary + results */}
@@ -1610,7 +1688,7 @@ function Step3() {
               background:canContinue?"linear-gradient(135deg,#f43f5e,#14b8a6)":"#e7e5e4",
               color:canContinue?"white":"#a8a29e",padding:"14px 0",borderRadius:18,
               fontSize:12,textTransform:"uppercase",letterSpacing:2}}>
-              {loading?"Evolving your avatar...":"✨ Update My Avatar & Watchlist"}
+              {loading?"Updating your profile...":"✨ Update My Profile"}
             </Btn>
           </>
         ) : (
@@ -1631,7 +1709,7 @@ function Step3() {
               </div>
             </Glass>
 
-            <Btn onClick={()=>update({step:4})} style={{width:"100%",
+            <Btn onClick={()=>update({step:5})} style={{width:"100%",
               background:`linear-gradient(135deg,${color.grad[0]},${color.grad[1]})`,
               color:"white",padding:"16px 0",borderRadius:18,fontSize:12,
               textTransform:"uppercase",letterSpacing:2,boxShadow:`0 4px 20px ${color.hex}55`}}>
@@ -1644,9 +1722,9 @@ function Step3() {
   );
 }
 
-// ─── STEP 4: FINAL CARD ───────────────────────────────────────────────────────
+// ─── STEP 5: FINAL CARD ───────────────────────────────────────────────────────
 
-function Step4() {
+function Step5() {
   const {state, update, reset} = useGame();
   const persona  = state.persona;
   const color    = bc(persona?.colorId);
@@ -1676,7 +1754,7 @@ function Step4() {
       <div style={{position:"relative",zIndex:10,display:"flex",flexDirection:"column",
         alignItems:"center",padding:"20px 14px",gap:14,maxWidth:440,margin:"0 auto"}}>
 
-        <StepBar step={4}/>
+        <StepBar step={5}/>
 
         <Glass style={{width:"100%",padding:"14px 20px",textAlign:"center"}}>
           <div style={{fontSize:20,fontWeight:900,color:"#14532d",textTransform:"uppercase",letterSpacing:2}}>🏆 Your Final Vibe Card</div>
@@ -1736,7 +1814,7 @@ function Step4() {
             <div style={{fontSize:9,color:"rgba(255,255,255,0.45)",marginBottom:16,fontFamily:"monospace"}}>
               picked: {derivedArchetype} | desk: [{(persona?.deskObjects||[]).slice(0,4).join(", ")}] | style: {state.selectedStyle||"—"}
             </div>
-            <button onClick={()=>update({step:5})}
+            <button onClick={()=>update({step:6})}
               style={{background:"white",color:color.dark,fontWeight:900,fontSize:12,
                 textTransform:"uppercase",letterSpacing:2,padding:"12px 32px",
                 borderRadius:16,border:"none",cursor:"pointer",
@@ -1756,50 +1834,87 @@ function Step4() {
   );
 }
 
-// ─── STEP 5: ELEVATE YOUR DESK ───────────────────────────────────────────────
+// ─── STEP 6: ELEVATE YOUR DESK ───────────────────────────────────────────────
 
-function Step5() {
+function Step6() {
   const {state, update, reset} = useGame();
   const persona = state.persona;
   const color   = bc(persona?.colorId);
 
-  // phase: "scanning" → "placing" → "revealed"
-  const [phase, setPhase] = useState("scanning");
+  // phase: "scanning" → "analyzing" → "revealed"
+  const [phase, setPhase]   = useState("scanning");
   const [scanY, setScanY]   = useState(0);
   const [msgIdx, setMsgIdx] = useState(0);
+  const [tips, setTips]     = useState(null);
 
   const scanMsgs = [
-    "📐 Measuring desk surface...",
-    "🔍 Finding the perfect spot...",
-    "✨ Placing your reward...",
-    "🎁 Almost ready!",
+    "📐 Scanning your workspace...",
+    "🔍 Analysing your setup...",
+    "💡 Generating your tips...",
+    "✨ Almost there!",
   ];
 
-  const derivedArchetype = getRewardArchetype(state);
-  const reward = REWARDS[derivedArchetype] || REWARDS.default;
+  // Call AI to generate 4 personalised desk organisation tips
+  const generateTips = async () => {
+    const step2 = state.step2Update;
+    const step3 = state.step3Update;
+    const tagline = step3?.tagline || step2?.tagline || persona?.tagline || "";
+    const traits  = (step3?.deskTraits || step2?.deskTraits || persona?.deskTraits || []).join(", ");
+    const style   = DESK_STYLES.find(s=>s.id===state.selectedStyle)?.label || "";
+    const hobbies = state.selectedHobbies.map(id=>HOBBIES.find(h=>h.id===id)?.label||id).join(", ");
+
+    const prompt = `You are a creative workspace consultant with a witty personality.
+Based on this person's desk profile:
+- Personality: "${tagline}"
+- Traits: ${traits}
+- Desk style preference: ${style}
+- Hobbies: ${hobbies}
+
+Generate exactly 4 short, specific, actionable desk organisation tips tailored to their personality.
+Each tip should be 1 sentence, witty and personal — reference their actual traits/hobbies where possible.
+Return ONLY a JSON array of 4 strings. Example: ["Tip one here","Tip two here","Tip three here","Tip four here"]
+Start with [`;
+
+    try {
+      const res = await fetch("/api/analyze", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-6", max_tokens:300,
+          messages:[{role:"user", content:[{type:"text", text:prompt}]}]
+        })
+      });
+      const data = await res.json();
+      const raw  = data.content?.find(b=>b.type==="text")?.text||"[]";
+      const m    = raw.match(/\[[\s\S]*\]/);
+      if (m) setTips(JSON.parse(m[0]));
+      else throw new Error("no array");
+    } catch(e) {
+      // Fallback tips based on persona
+      setTips([
+        "Clear your most-used tools to within arm's reach — your best ideas deserve zero friction.",
+        "Add a small plant or candle to anchor your focus zone and signal 'work mode' to your brain.",
+        "Create one dedicated 'chaos corner' so the rest of your desk can stay intentionally clear.",
+        "End each day with a 2-minute reset — future you will thank present you every single morning.",
+      ]);
+    }
+  };
 
   useEffect(() => {
-    // Phase 1: scan line sweeps down
+    // Phase 1: scan line sweeps
     let sy = 0;
     const scanInt = setInterval(() => {
       sy += 3;
       setScanY(sy);
-      if (sy >= 105) {
-        clearInterval(scanInt);
-        setPhase("placing");
-      }
+      if (sy >= 105) { clearInterval(scanInt); setPhase("analyzing"); }
     }, 28);
-
-    // Message cycling during scan
     const msgInt = setInterval(() => setMsgIdx(i => (i+1) % scanMsgs.length), 900);
-
     return () => { clearInterval(scanInt); clearInterval(msgInt); };
   }, []);
 
   useEffect(() => {
-    if (phase === "placing") {
-      const t = setTimeout(() => setPhase("revealed"), 1000);
-      return () => clearTimeout(t);
+    if (phase === "analyzing") {
+      generateTips().then(() => setPhase("revealed"));
     }
   }, [phase]);
 
@@ -1822,7 +1937,7 @@ function Step5() {
       <div style={{position:"relative", zIndex:10, display:"flex", flexDirection:"column",
         alignItems:"center", padding:"20px 14px", gap:16, maxWidth:480, margin:"0 auto"}}>
 
-        <StepBar step={5}/>
+        <StepBar step={6}/>
 
         {/* Header */}
         <div style={{textAlign:"center"}}>
@@ -1832,11 +1947,13 @@ function Step5() {
             ✦ Elevate Your Desk
           </div>
           <div style={{fontSize:12,color:"rgba(255,255,255,0.65)",fontWeight:600}}>
-            {scanning ? scanMsgs[msgIdx] : phase==="placing" ? "🎁 Adding your reward..." : "Here's your upgraded desk!"}
+            {scanning ? scanMsgs[msgIdx]
+              : phase==="analyzing" ? "💡 Crafting your personalised tips..."
+              : "Here\'s your upgraded desk!"}
           </div>
         </div>
 
-        {/* Main desk frame */}
+        {/* Main desk photo frame */}
         <div style={{
           width:"100%", borderRadius:24, overflow:"hidden",
           border:"3px solid rgba(255,255,255,0.2)",
@@ -1849,134 +1966,103 @@ function Step5() {
           <div style={{position:"absolute",top:-7,right:"16%",width:64,height:14,
             background:"rgba(255,255,220,0.85)",borderRadius:3,transform:"rotate(2deg)",zIndex:20}}/>
 
-          <div style={{aspectRatio:"4/3", position:"relative"}}>
-            {/* desk photo */}
+          <div style={{position:"relative"}}>
+            {/* The original desk photo — clean, no overlay objects */}
             {state.photoUrl
               ? <img src={state.photoUrl} alt="Your desk"
-                  style={{width:"100%", height:"100%", objectFit:"cover", display:"block"}}/>
-              : <div style={{width:"100%",height:"100%",background:"linear-gradient(135deg,#a7f3d0,#bae6fd)"}}/>}
+                  style={{width:"100%", aspectRatio:"4/3", objectFit:"cover", display:"block"}}/>
+              : <div style={{width:"100%",aspectRatio:"4/3",background:"linear-gradient(135deg,#a7f3d0,#bae6fd)"}}/>}
 
-            {/* bottom vignette */}
+            {/* Subtle bottom vignette only */}
             <div style={{position:"absolute",inset:0,
-              background:"linear-gradient(to bottom, transparent 45%, rgba(0,0,0,0.35) 100%)"}}/>
+              background:"linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.3) 100%)"}}/>
 
-            {/* SCAN LINE — sweeps during scanning phase */}
+            {/* SCAN LINE during scanning */}
             {scanning && (
               <>
                 <div style={{
-                  position:"absolute", left:0, right:0, top:`${scanY}%`,
-                  height:3,
+                  position:"absolute", left:0, right:0, top:`${scanY}%`, height:3,
                   background:"linear-gradient(90deg,transparent,#4ade80,#22d3ee,#4ade80,transparent)",
-                  boxShadow:"0 0 18px #4ade80, 0 0 36px rgba(74,222,128,0.4)",
-                  zIndex:15,
-                  transition:"top 0.03s linear",
+                  boxShadow:"0 0 18px #4ade80", zIndex:15, transition:"top 0.03s linear",
                 }}/>
-                {/* scanned area tint */}
-                <div style={{
-                  position:"absolute", left:0, right:0, top:0, height:`${scanY}%`,
-                  background:"rgba(74,222,128,0.05)", zIndex:14,
-                }}/>
-                {/* corner brackets */}
+                <div style={{position:"absolute",left:0,right:0,top:0,height:`${scanY}%`,
+                  background:"rgba(74,222,128,0.05)",zIndex:14}}/>
                 {[[6,6],[6,88],[88,6],[88,88]].map(([x,y],i) => (
-                  <div key={i} style={{
-                    position:"absolute", left:`${x}%`, top:`${y}%`,
-                    width:18, height:18, zIndex:16,
-                    borderTop:    y<50 ? "2px solid #4ade80" : undefined,
-                    borderBottom: y>50 ? "2px solid #4ade80" : undefined,
-                    borderLeft:   x<50 ? "2px solid #4ade80" : undefined,
-                    borderRight:  x>50 ? "2px solid #4ade80" : undefined,
+                  <div key={i} style={{position:"absolute",left:`${x}%`,top:`${y}%`,
+                    width:18,height:18,zIndex:16,
+                    borderTop:    y<50?"2px solid #4ade80":undefined,
+                    borderBottom: y>50?"2px solid #4ade80":undefined,
+                    borderLeft:   x<50?"2px solid #4ade80":undefined,
+                    borderRight:  x>50?"2px solid #4ade80":undefined,
                   }}/>
                 ))}
-                <div style={{
-                  position:"absolute", top:"48%", left:"50%",
+                <div style={{position:"absolute",top:"48%",left:"50%",
                   transform:"translate(-50%,-50%)",
-                  fontSize:10, fontWeight:900, color:"#4ade80",
-                  textTransform:"uppercase", letterSpacing:3, zIndex:17,
-                  background:"rgba(0,0,0,0.5)", padding:"4px 10px", borderRadius:8,
-                }}>SCANNING</div>
+                  fontSize:10,fontWeight:900,color:"#4ade80",textTransform:"uppercase",
+                  letterSpacing:3,zIndex:17,background:"rgba(0,0,0,0.5)",
+                  padding:"4px 10px",borderRadius:8}}>SCANNING</div>
               </>
             )}
 
-            {/* "placing" phase — pulsing target ring where reward will appear */}
-            {phase === "placing" && (
-              <div style={{
-                position:"absolute", bottom:"8%", left:"9%",
-                width:60, height:60,
-                border:"3px solid #4ade80",
-                borderRadius:"50%",
-                animation:"pulseRing 0.6s ease-in-out infinite",
-                zIndex:15,
-                display:"flex", alignItems:"center", justifyContent:"center",
-                fontSize:24,
-              }}>
-                {reward.emoji}
+            {/* Analysing spinner */}
+            {phase==="analyzing" && (
+              <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",
+                justifyContent:"center",background:"rgba(0,0,0,0.45)",zIndex:15}}>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:36,animation:"pulse 1s ease-in-out infinite",marginBottom:8}}>💡</div>
+                  <div style={{fontSize:11,fontWeight:900,color:"white",letterSpacing:2,textTransform:"uppercase"}}>Generating your tips...</div>
+                </div>
               </div>
             )}
 
-            {/* SVG reward — appears on reveal */}
-            <svg viewBox="0 0 100 165" style={{
-              position:"absolute", bottom:0, left:"4%",
-              width:"18%", height:"auto",
-              filter:"drop-shadow(3px 6px 10px rgba(0,0,0,0.5))",
-              zIndex:10,
-              opacity: revealed ? 1 : 0,
-              transform: revealed ? "translateY(0) scale(1)" : "translateY(20px) scale(0.85)",
-              transition:"opacity 0.8s ease, transform 0.8s cubic-bezier(.34,1.56,.64,1)",
-            }}
-              dangerouslySetInnerHTML={{__html: (REWARD_SVG[derivedArchetype]||REWARD_SVG.default)()}}
-            />
-
-            {/* "New" badge */}
+            {/* "Your Desk" badge bottom left */}
             <div style={{
-              position:"absolute", bottom:"34%", left:"24%",
-              background:`linear-gradient(135deg,${color.grad[0]},${color.grad[1]})`,
-              borderRadius:99, padding:"3px 10px", fontSize:9, fontWeight:900,
-              color:"white", letterSpacing:1, textTransform:"uppercase",
-              boxShadow:`0 2px 10px ${color.hex}66`, zIndex:11,
+              position:"absolute", bottom:10, left:12,
+              background:"rgba(0,0,0,0.65)", backdropFilter:"blur(10px)",
+              borderRadius:10, padding:"4px 10px", fontSize:10, fontWeight:900,
+              color:"white", zIndex:11,
               opacity: revealed ? 1 : 0,
-              transition:"opacity 0.5s ease 0.9s",
-            }}>✦ New</div>
-
-            {/* reward name badge bottom right */}
-            <div style={{
-              position:"absolute", bottom:10, right:10,
-              background:"rgba(0,0,0,0.72)", backdropFilter:"blur(10px)",
-              borderRadius:12, padding:"5px 11px",
-              display:"flex", alignItems:"center", gap:6, zIndex:11,
-              opacity: revealed ? 1 : 0,
-              transition:"opacity 0.5s ease 1s",
-            }}>
-              <span style={{fontSize:14}}>{reward.emoji}</span>
-              <span style={{fontSize:10,fontWeight:900,color:"white"}}>{reward.name}</span>
-            </div>
+              transition:"opacity 0.5s ease 0.3s",
+            }}>📍 Your workspace</div>
           </div>
         </div>
 
-        {/* Reward explanation */}
+        {/* 4 Organisation tips — revealed after AI call */}
         <div style={{
           width:"100%", borderRadius:20,
           background:"rgba(255,255,255,0.1)", backdropFilter:"blur(20px)",
           border:"1px solid rgba(255,255,255,0.18)",
-          padding:18, display:"flex", alignItems:"flex-start", gap:14,
+          padding:18,
           opacity: revealed ? 1 : 0,
-          transition:"opacity 0.6s ease 1.1s",
+          transition:"opacity 0.7s ease 0.4s",
         }}>
-          <div style={{fontSize:36, flexShrink:0}}>{reward.emoji}</div>
-          <div>
-            <div style={{fontSize:13,fontWeight:900,color:"white",marginBottom:5}}>🎁 {reward.name}</div>
-            <p style={{fontSize:12,color:"rgba(255,255,255,0.75)",fontWeight:600,margin:0,lineHeight:1.6}}>
-              {reward.why}
-            </p>
+          <div style={{fontSize:12,fontWeight:900,color:"white",marginBottom:14,
+            textTransform:"uppercase",letterSpacing:2}}>
+            💡 4 Ways to Elevate Your Setup
           </div>
+          {(tips||[]).map((tip, i) => (
+            <div key={i} style={{
+              display:"flex", alignItems:"flex-start", gap:12, marginBottom: i<3 ? 14 : 0,
+            }}>
+              <div style={{
+                width:26, height:26, borderRadius:"50%", flexShrink:0,
+                background:`linear-gradient(135deg,${color.grad[0]},${color.grad[1]})`,
+                display:"flex", alignItems:"center", justifyContent:"center",
+                fontSize:11, fontWeight:900, color:"white",
+              }}>{i+1}</div>
+              <p style={{fontSize:12,color:"rgba(255,255,255,0.85)",fontWeight:600,
+                lineHeight:1.6,margin:0}}>{tip}</p>
+            </div>
+          ))}
         </div>
 
         {/* Actions */}
         <div style={{
           width:"100%", display:"flex", flexDirection:"column", gap:10,
           opacity: revealed ? 1 : 0,
-          transition:"opacity 0.5s ease 1.2s",
+          transition:"opacity 0.5s ease 0.8s",
         }}>
-          <Btn onClick={()=>update({step:4})}
+          <Btn onClick={()=>update({step:6})}
             style={{width:"100%", background:"rgba(255,255,255,0.12)",
               border:"1px solid rgba(255,255,255,0.22)",
               color:"white", padding:"14px 0", borderRadius:16,
@@ -2008,6 +2094,7 @@ function Router() {
       {state.step===3 && <Step3/>}
       {state.step===4 && <Step4/>}
       {state.step===5 && <Step5/>}
+      {state.step===6 && <Step6/>}
     </div>
   );
 }
