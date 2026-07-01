@@ -1,6 +1,3 @@
-// Vercel serverless function — proxies Anthropic API calls
-// keeping your API key server-side and secure
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
