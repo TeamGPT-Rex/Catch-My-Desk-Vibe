@@ -1241,6 +1241,7 @@ function Step1() {
   const [dots, setDots] = useState(".");
   const [statusIdx, setStatusIdx] = useState(0);
   const statuses = ["Scanning desk surface...","Reading objects & colours...","Building your persona...","Almost there..."];
+  const fileInputRef = useRef(null);
 
   const handleFile = (file) => {
     if (!file) return;
@@ -1249,14 +1250,13 @@ function Step1() {
       const url = e.target.result;
       update({photoUrl: url});
       setAnalyzing(true);
-      // animate status messages
       let si=0;
       const sint = setInterval(()=>{ si=(si+1)%statuses.length; setStatusIdx(si); }, 1200);
       const dint = setInterval(()=>setDots(d=>d.length>=3?".":".."), 500);
       try {
         const persona = await analyzeDesk(url);
         clearInterval(sint); clearInterval(dint);
-        update({persona, analyzing:false});  // stay on step 1, show scan complete
+        update({persona, analyzing:false});
       } catch(err) {
         clearInterval(sint); clearInterval(dint);
         update({
@@ -1270,6 +1270,10 @@ function Step1() {
       setAnalyzing(false);
     };
     reader.readAsDataURL(file);
+  };
+
+  const openFilePicker = () => {
+    if (fileInputRef.current) fileInputRef.current.click();
   };
 
   const persona = state.persona;
@@ -1339,15 +1343,23 @@ function Step1() {
                 </div>
               ))}
             </Glass>
-            <div style={{width:"100%",aspectRatio:"16/8",borderRadius:20,
-              border:"3px dashed #86efac",overflow:"hidden",position:"relative",background:"rgba(255,255,255,0.6)"}}>
-              <label style={{width:"100%",height:"100%",display:"flex",flexDirection:"column",
-                alignItems:"center",justifyContent:"center",cursor:"pointer",gap:10}}>
-                <span style={{fontSize:44}}>📸</span>
-                <span style={{fontSize:11,fontWeight:900,color:"#16a34a",textTransform:"uppercase",letterSpacing:2}}>Upload Desk Photo</span>
-                <span style={{fontSize:11,color:"#a8a29e",fontWeight:600}}>AI analyses it automatically</span>
-                <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleFile(e.target.files?.[0])}/>
-              </label>
+            <div
+              onClick={openFilePicker}
+              style={{width:"100%",aspectRatio:"16/8",borderRadius:20,
+                border:"3px dashed #86efac",overflow:"hidden",position:"relative",
+                background:"rgba(255,255,255,0.6)",cursor:"pointer",
+                display:"flex",flexDirection:"column",
+                alignItems:"center",justifyContent:"center",gap:10}}>
+              <span style={{fontSize:44}}>📸</span>
+              <span style={{fontSize:11,fontWeight:900,color:"#16a34a",textTransform:"uppercase",letterSpacing:2}}>Upload Desk Photo</span>
+              <span style={{fontSize:11,color:"#a8a29e",fontWeight:600}}>AI analyses it automatically</span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/webp"
+                style={{display:"none"}}
+                onChange={e => { if(e.target.files?.[0]) handleFile(e.target.files[0]); }}
+              />
             </div>
           </>
         )}
