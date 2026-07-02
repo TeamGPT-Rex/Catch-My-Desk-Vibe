@@ -1807,12 +1807,8 @@ function Step5() {
             <div style={{fontSize:16,fontWeight:900,color:"white",marginBottom:4,letterSpacing:.5}}>
               Elevate Your Desk
             </div>
-            <div style={{fontSize:12,color:"rgba(255,255,255,0.82)",fontWeight:600,marginBottom:8,lineHeight:1.5}}>
-              See how a <b style={{color:"white"}}>{reward.name}</b> would look on your desk
-            </div>
-            {/* Debug: show what drove the choice */}
-            <div style={{fontSize:9,color:"rgba(255,255,255,0.45)",marginBottom:16,fontFamily:"monospace"}}>
-              picked: {derivedArchetype} | desk: [{(persona?.deskObjects||[]).slice(0,4).join(", ")}] | style: {state.selectedStyle||"—"}
+            <div style={{fontSize:12,color:"rgba(255,255,255,0.82)",fontWeight:600,marginBottom:16,lineHeight:1.5}}>
+              Get personalised tips to upgrade your workspace
             </div>
             <button onClick={()=>update({step:6})}
               style={{background:"white",color:color.dark,fontWeight:900,fontSize:12,
